@@ -1,415 +1,372 @@
 import json
 import re
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
-
 import streamlit as st
 
+# --- CONSTANTS & PATHS ---
 STATE_PATH = Path("game_design_state.json")
-EXPORT_DIR = Path("exports")
-
-MODULES = [
-    "Genre/Theme",
-    "Setting",
-    "Game Rules",
-    "Character Traits",
-    "Narrative Script",
-]
-
+MODULES = ["Genre/Theme", "Setting", "Game Rules", "Character Traits", "Physical Traits", "Narrative Script"]
 GAME_SIZES = ["Micro", "Mid-Tier", "Open World"]
 
-SUGGESTION_LIBRARY: Dict[str, Dict[str, List[str]]] = {
+# --- THE FULL 120-ITEM SUGGESTION LIBRARY (RESTORED) ---
+SUGGESTION_LIBRARY = {
     "Genre/Theme": {
-        "Micro": [
-            "Pocket tragedy roguelite where each run is a three-minute memory loop",
-            "Single-screen social deduction puzzler played through voicemail snippets",
-            "Minimalist rhythm tactics game set inside a malfunctioning lullaby machine",
-        ],
-        "Mid-Tier": [
-            "Investigative action-RPG about urban folklore auditors who weaponize rumors",
-            "Asymmetric co-op survival game where one player is the weather system",
-            "Deckbuilding stealth game set in a living museum that rearranges eras nightly",
-        ],
-        "Open World": [
-            "Post-borderland diplomacy sandbox where factions are languages, not nations",
-            "Bio-architectural fantasy where terrain grows from player-made legal treaties",
-            "Interplanetary migration sim mixing colony management with oral-history quests",
-        ],
+        "Micro": ["Pocket tragedy roguelite", "Voicemail social deduction", "Lullaby rhythm tactics",
+                  "Input-flip puzzle", "Typing combat", "Sound-pattern stealth", "Heartbeat rhythm", "One-weapon arena",
+                  "Logic-chain programming", "Emoji text-adventure", "Glass-stacking physics", "Clockwork bullet hell",
+                  "Brightness horror", "Ant-hill sim", "1-bit crawler", "Gravity-flip platformer",
+                  "Digital tarot builder", "Bullet-avoiding shooter", "Cosmic speed-dating", "16x16 moss garden"],
+        "Mid-Tier": ["Urban folklore auditors", "Weather-system survival", "Museum deckbuilder", "Moral-skill RPG",
+                     "Relationship-mechanic sim", "Shifting physics beat-em-up", "Song-path adventure",
+                     "Emotional stealth RPG", "Dancing combat rhythm", "Steampunk airship racer",
+                     "Scent-memory detective", "Sentient fabric RPG", "Nightmare hunting horror",
+                     "Whale-back city builder", "Alchemy reaction sim", "Gothic body-part Metroidvania",
+                     "3D node hacker", "Ghost-disappearance mystery", "Revolution grand strategy",
+                     "Cooking gladiator combat"],
+        "Open World": ["Language diplomacy sandbox", "Bio-architectural fantasy", "Interplanetary migration sim",
+                       "Musical genre RPG", "AI society simulation", "Robot societal builder",
+                       "Terrain-reshape hack-and-slash", "NPC memory simulation", "Language physics exploration",
+                       "Sea monster city-builder", "Oxygen currency survival", "Coding magic frontier",
+                       "Terraforming merchant sim", "Sand-dune tech exploration", "Cyber-feudal Japan",
+                       "Multi-realm ripple RPG", "Machine automation sandbox", "Solar-punk green tech",
+                       "God-ribcage exploration", "Sky-island wind sandbox"]
     },
     "Setting": {
-        "Micro": [
-            "An elevator stuck between two floors that changes decade every minute",
-            "A tiny floating market drifting through cloud canyons at dawn",
-            "A sealed train cabin crossing a storm where outside laws keep mutating",
-        ],
-        "Mid-Tier": [
-            "A coastal city powered by archived dreams sold as public utilities",
-            "An abandoned orbital station reclaimed by competing theater troupes",
-            "A mountain megastructure where every district follows a different calendar",
-        ],
-        "Open World": [
-            "A fractured continent linked by migratory forests that move each season",
-            "A planet-sized archive where biomes are organized by forgotten emotions",
-            "A tidal super-region whose coastlines are redrawn by moon-forge politics",
-        ],
+        "Micro": ["Stuck elevator", "Cloud market", "Train cabin", "Repeating trench", "Victorian office",
+                  "Time-storm ship", "VR training glitched", "Mafia safehouse", "Space capsule", "Asteroid lighthouse",
+                  "Clockwork heart", "Atomic lab", "Hurricane greenhouse", "Mood shelter", "Sinking skyscraper",
+                  "Vending portal", "Blizzard tent", "Memory attic", "Universe campfire", "Digital cell"],
+        "Mid-Tier": ["Dream-utility city", "Theater station", "Calendar mountain", "Leviathan metropolis",
+                     "Glass forest", "Library archipelago", "Underground volcanic neo-Tokyo", "Memory oasis",
+                     "Bioluminescent gothic", "Sky-dock needle", "Dragonfly swamp", "Lunar art colony",
+                     "Arctic ghost base", "Echo valley", "Moon labyrinth", "Toy factory town", "Data canals",
+                     "Gas giant school", "Intergalactic village", "Uphill lava island"],
+        "Open World": ["Migratory forest", "Emotion archive", "Tidal super-region", "Dyson patchwork",
+                       "Starlight nebula", "Silicon desert", "Hollow earth", "Crystal canyons", "Sky-ground void",
+                       "Neon smog sprawl", "Sentient jungle", "Era-volcano chain", "Gear landscape",
+                       "Bioluminescent web", "Lily-pad ocean", "Heat-currency winter", "Solar seed paradise",
+                       "10-minute-behind wasteland", "Turtle-back kingdom", "Post-human tribes"]
     },
     "Game Rules": {
-        "Micro": [
-            "One-hit permadeath, but every death permanently reveals one hidden map tile",
-            "You can only perform one verb per turn, and the verb rotates globally",
-            "Timer never stops: pausing rewinds your resources instead",
-        ],
-        "Mid-Tier": [
-            "Trust economy: allies gain abilities only if your last three choices stayed consistent",
-            "Combat outcomes alter local grammar, changing how quests can be interpreted",
-            "Crafting uses entropy budget: stronger items destabilize nearby systems",
-        ],
-        "Open World": [
-            "Dynamic ecosystem-based trade where species migration changes market value and quests",
-            "Law simulation engine: regions generate procedural laws that NPCs enforce and exploit",
-            "World memory system where major events rewrite fast-travel routes and faction doctrine",
-        ],
+        "Micro": ["Tile-death reveal", "One verb turn", "Decision time", "Health is currency", "Hostile shadow AI",
+                  "Wind movement", "Timer resources", "Death resets mechanics", "Minute removal", "RPS combat",
+                  "Single-hit KO", "Limited oxygen", "Inventory weight speed", "Light-based safety",
+                  "Sound attracts monsters", "Recycling parts", "No-jump restriction", "Color-coded damage",
+                  "Magnetic attraction", "Shadow-only walking"],
+        "Mid-Tier": ["Trust economy", "Grammar combat", "Entropy crafting", "Weather ecosystem", "Sanity rendering",
+                     "Limb injury", "Memory crafting", "Terraforming walls", "Heart-rate stealth",
+                     "Reputation visibility", "Seasonal migration", "Dynamic inflation", "Political favor",
+                     "Skill-tree rot", "Blueprint hunting", "Biological energy", "Heat-signature tracking",
+                     "Day/Night stats", "Weapon degradation", "NPC debt system"],
+        "Open World": ["Ecosystem trade", "AI legal system", "Territory wars", "World decay", "Language physics",
+                       "Hereditary aging", "Pollution meter", "Destructible world", "Tech eras", "Settlement scaling",
+                       "Continental drift", "Cultural diffusion", "Satellite networking", "Deep-sea pressure",
+                       "Global warming sim", "Interstellar logistics", "Species evolution", "Resource exhaustion",
+                       "Atmospheric oxygen", "Tectonic movement"]
     },
     "Character Traits": {
-        "Micro": [
-            "Protagonist remembers futures but forgets names",
-            "Companion speaks only in map coordinates tied to emotions",
-            "Hero can borrow one trait from any defeated rival for a single scene",
-        ],
-        "Mid-Tier": [
-            "Diplomat-engineer with synesthesia that visualizes lies as architectural stress",
-            "Ex-smuggler archivist whose confidence stat rises when hoarding contradictions",
-            "Medic who can split a personality into temporary tactical specialists",
-        ],
-        "Open World": [
-            "Faction leaders age at different speeds based on player policy decisions",
-            "Playable cast carries hereditary vows that unlock or block whole questlines",
-            "Nemesis characters evolve their ethics by observing your settlement design",
-        ],
+        "Micro": ["Forgets names", "Luck focus", "Bee swarm", "Glass body", "Luck health", "Emotive coordinates",
+                  "Meditation healing", "Shadow-strength", "Techno-glitches", "Thermal vision", "Heavy breather",
+                  "Mute observer", "Fidgety hands", "Constant humming", "Night owl", "Sharp tongue", "Clumsy gait",
+                  "Silver spoon", "Iron stomach", "Paper skin"],
+        "Mid-Tier": ["Synesthesia diplomat", "Smuggler archivist", "Personality split", "AI virus hacker",
+                     "Fading traveler", "Vibration monk", "Object reader", "Environment bard", "Berserker monk",
+                     "Vow-breaker", "Telepathic static", "Gravity dancer", "Dream walker", "Soul merchant",
+                     "Clockwork lungs", "Venomous blood", "Electric touch", "Magnetic pulse", "Weightless spirit",
+                     "Echo singer"],
+        "Open World": ["Policy aging", "Hereditary vows", "Ethics nemesis", "Social battery", "Fear biomes",
+                       "Alignment dialogue", "Dream quests", "Bulk inventory", "Addiction stats", "Trait inheritance",
+                       "Historical legend", "Faction pariah", "Prophecy carrier", "World-soul linker", "Memory thief",
+                       "Time-dilated aging", "Ethereal anchor", "Chaos catalyst", "Law bringer", "Nature's herald"]
+    },
+    "Physical Traits": {
+        "Micro": ["Glowing eye", "Stress-cracks", "Rotating limb", "Static halo", "Neon trails", "TV head",
+                  "Liquid body", "Multiple arms", "Living pack", "Mirror skin", "Steam vents", "Crystalline hair",
+                  "Floating gears", "Paper wings", "Third eye", "Animal ears", "Scaled neck", "Burn scars",
+                  "Vibrating skin", "Ink-stained fingers"],
+        "Mid-Tier": ["Spine display", "Choice face", "Crystal heart", "Bio tattoos", "Bark-skin", "Scent trail",
+                     "Energy crystals", "Webbed limbs", "Grown armor", "Voice mimic", "Luminescent veins",
+                     "Metallic sheen", "Wings of light", "Extra-sensory horns", "Branching antlers", "Coral growth",
+                     "Shadow cloak", "Gemstone teeth", "Telescopic eyes", "Prehensile tail"],
+        "Open World": ["Region evolution", "Narrative scars", "Ecosystem mutation", "Timeline transformation",
+                       "Visible aging", "Cybernetic mods", "Journey tattoos", "Zone mutations",
+                       "Ascension transparency", "World-scale size", "Galactic eyes", "Molten core", "Nebula aura",
+                       "Void stomach", "Rooted feet", "Atmospheric lungs", "Shifting mass", "Dimensional bleed",
+                       "Singularity navel", "Stellar crown"]
     },
     "Narrative Script": {
-        "Micro": [
-            "Three-scene loop: promise, fracture, reinterpretation",
-            "Story delivered through receipts that reveal a missing person timeline",
-            "Dialogue choices are replaced by choosing what memory to delete",
-        ],
-        "Mid-Tier": [
-            "Five-act conspiracy where each act is narrated by a different unreliable witness",
-            "Branching court drama resolved by reconstructing public myths in real time",
-            "Main plot progresses only when side characters finish their personal arcs",
-        ],
-        "Open World": [
-            "Layered epic with regional sagas feeding into a mutable world constitution",
-            "Narrative mesh where player-founded institutions become future quest-givers",
-            "Long-form political myth where endings are voted by simulated populations",
-        ],
-    },
+        "Micro": ["Three-scene loop", "Memory deletion", "Weapon perspective", "Poem script", "Explorer logs",
+                  "Stop-playing AI", "Dream-wake", "Backward plot", "Receipt story", "Jar-label story", "Radio silence",
+                  "Binary dialogue", "Coded letters", "Final wishes", "Found photos", "Lost keys", "Graffiti warnings",
+                  "Mirror talk", "Echoed screams", "Silent goodbye"],
+        "Mid-Tier": ["Witness conspiracy", "Myth court", "Character arcs", "Found-footage city", "Recursive loop",
+                     "Toaster uprising", "Race vs Time", "Gray-area conflict", "Designer gods", "NPC daily-life",
+                     "Political thriller", "Family feud", "Missing heir", "Religious schism", "Forbidden love",
+                     "Stolen legacy", "Hidden truth", "Revenge path", "Ascension trial", "Downfall arc"],
+        "Open World": ["Regional saga", "Quest-mesh", "Voted myth", "Written history", "Magic philosophy",
+                       "Corporate-god revolution", "Repeating loop", "Pandemic search", "Lore-character",
+                       "Galaxy migration", "Era collapse", "New world dawn", "Ancient awakening", "Forgotten war",
+                       "Global treaty", "Space race", "Underground rebellion", "Sky kingdom fall", "Distant signal",
+                       "Last stand"]
+    }
 }
 
 
+# --- PERSISTENCE ---
 @dataclass
 class EngineState:
     game_size: str
     selected: Dict[str, List[str]]
 
     @classmethod
-    def load(cls) -> "EngineState":
+    def load(cls):
         if STATE_PATH.exists():
-            data = json.loads(STATE_PATH.read_text(encoding="utf-8"))
-            return cls(
-                game_size=data.get("game_size", GAME_SIZES[0]),
-                selected={m: data.get("selected", {}).get(m, []) for m in MODULES},
-            )
-        return cls(game_size=GAME_SIZES[0], selected={m: [] for m in MODULES})
+            data = json.loads(STATE_PATH.read_text())
+            return cls(game_size=data.get("game_size", "Micro"),
+                       selected=data.get("selected", {m: [] for m in MODULES}))
+        return cls(game_size="Micro", selected={m: [] for m in MODULES})
 
-    def save(self) -> None:
-        payload = {"game_size": self.game_size, "selected": self.selected}
-        STATE_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    def save(self):
+        STATE_PATH.write_text(json.dumps({"game_size": self.game_size, "selected": self.selected}))
 
 
-def get_suggestions(module: str, game_size: str) -> List[str]:
-    return SUGGESTION_LIBRARY[module][game_size]
+# --- RENDERERS ---
+def build_art_prompt(entry, module, game_size):
+    style = "2D pixel-art" if game_size == "Micro" else "cinematic concept art"
+    return f"{style}, {entry}, dramatic lighting, high detail, masterpiece."
 
 
-def build_art_prompt(entry: str, module: str, game_size: str) -> str:
-    style = "2D pixel-art" if game_size == "Micro" else "stylized concept art" if game_size == "Mid-Tier" else "cinematic worldbuilding illustration"
-    focus = "character design sheet" if module == "Character Traits" else "environment matte painting"
-    mood = "high contrast lighting, rich atmospheric depth, crisp silhouette, storytelling composition"
-    return (
-        f"{style}, {focus}, {entry}, dramatic perspective, layered foreground and background, "
-        f"materials and textures clearly defined, {mood}, production-ready game art prompt"
-    )
-
-
-def infer_tones(traits: List[str]) -> List[str]:
-    text = " ".join(traits).lower()
-    mapping = {
-        "sarcastic": ["sarcastic", "dry humor", "wry"],
-        "brave": ["brave", "fearless", "valiant"],
-        "distrustful": ["distrust", "skeptic", "paranoid"],
-    }
-    tones = []
-    for tone, keywords in mapping.items():
-        if any(k in text for k in keywords):
-            tones.append(tone)
-    return tones or ["grounded", "intense", "guarded"]
-
-
-def can_finish_thought(seed: str) -> bool:
-    return bool(re.search(r'["“]$|\.\.\.$|:$', seed.strip()))
-
-
-def build_dialogue_variations(seed: str, traits: List[str]) -> List[str]:
-    tones = infer_tones(traits)
-    base = seed.strip()
-    if not base.endswith((" ", '"', "“")):
-        base = f"{base} "
-
-    pools = {
-        "sarcastic": [
-            '"Perfect. Another mystery map with no legend—my favorite kind of optimism."',
-            '"If this route gets us killed, at least the cartography is stylish."',
-            '"Great, the path marked \"safe\" is on fire. Very reassuring."',
-        ],
-        "brave": [
-            '"Then we move before dawn—if danger wants us, it can chase us."',
-            '"We follow the ridge together. No one gets left behind."',
-            '"Mark the shortest path. I will open the way."',
-        ],
-        "distrustful": [
-            '"No. Someone altered these markings after the last patrol."',
-            '"Keep your voices down; this map is bait, not guidance."',
-            '"We verify every checkpoint ourselves—trust nothing inked here."',
-        ],
-        "grounded": [
-            '"If this is accurate, we have one clean chance to cross."',
-            '"We plan for the worst route and earn the better one."',
-            '"Circle the hazards first; then we decide who moves where."',
-        ],
-        "intense": [
-            '"Every minute we hesitate, the window closes—choose now."',
-            '"We commit fully or we turn back; there is no middle path."',
-            '"This is the line. Cross it ready, or don\'t cross at all."',
-        ],
-        "guarded": [
-            '"We proceed, but only after we test who benefits from this route."',
-            '"Assume we are expected. Move like we are already watched."',
-            '"No shortcuts. Careful steps keep us alive longer than bold guesses."',
-        ],
-    }
-
-    first_three = tones[:3]
-    lines = [f"{base}{pools[tone][0]}" for tone in first_three]
-    while len(lines) < 3:
-        lines.append(f"{base}{pools['grounded'][len(lines)]}")
-    return lines[:3]
-
-
-def render_pitch(state: EngineState) -> str:
-    parts = [f"# Game Pitch\n\n**Game Size:** {state.game_size}\n"]
+def generate_unity_script(state):
+    class_name = "GameCodexData"
+    fields = ""
     for module in MODULES:
-        choices = state.selected.get(module, [])
-        if choices:
-            parts.append(f"## {module}\n")
-            for item in choices:
-                parts.append(f"- {item}\n")
-    parts.append(
-        "\nThis concept fuses your selected pillars into a coherent production-ready direction, balancing scope, mechanics, and narrative identity."
-    )
-    return "\n".join(parts)
+        clean_name = module.replace("/", "").replace(" ", "")
+        items = state.selected.get(module, [])
+        list_str = ", ".join([f'"{i}"' for i in items])
+        fields += f"    public string[] {clean_name} = {{ {list_str} }};\n"
+
+    return f"""using UnityEngine;
+
+public class {class_name} : MonoBehaviour
+{{
+    public string gameSize = "{state.game_size}";
+
+{fields}
+    void Start()
+    {{
+        Debug.Log("Lore Weaver Codex Loaded: " + gameSize);
+    }}
+}}"""
 
 
-def render_ide_tree(state: EngineState) -> str:
-    lines = [
-        "game-design/",
-        "├── 01_genre_theme.md",
-        "├── 02_setting.md",
-        "├── 03_game_rules.md",
-        "├── 04_character_traits.md",
-        "└── 05_narrative_script.md",
-        "",
-    ]
-    for index, module in enumerate(MODULES, start=1):
-        filename = f"{index:02d}_{module.lower().replace('/', '').replace(' ', '_')}.md"
-        lines.append(f"# {filename}")
-        lines.append(f"## {module}")
-        for entry in state.selected.get(module, []):
-            lines.append(f"- {entry}")
-        lines.append("")
-    return "\n".join(lines)
+def render_pitch(state):
+    return "\n".join(
+        [f"## {m}\n" + "\n".join([f"- {i}" for i in state.selected[m]]) for m in MODULES if state.selected[m]])
 
 
-def render_unity_script(state: EngineState) -> str:
-    def to_field(module: str) -> str:
-        cleaned = module.replace("/", " ").replace("-", " ").lower().split()
-        return "".join([cleaned[0]] + [w.capitalize() for w in cleaned[1:]])
-
-    lines = [
-        "using System.Collections.Generic;",
-        "using UnityEngine;",
-        "",
-        "[CreateAssetMenu(fileName = \"GameDesignData\", menuName = \"Game Design/Data\")]",
-        "public class GameDesignData : ScriptableObject",
-        "{",
-        f'    [SerializeField] private string gameSize = "{state.game_size}";',
-    ]
-    for module in MODULES:
-        field = to_field(module)
-        lines.append(
-            f"    [SerializeField] private List<string> {field} = new List<string> {{"
-        )
-        for entry in state.selected.get(module, []):
-            safe = entry.replace('"', '\\"')
-            lines.append(f'        "{safe}",')
-        lines.append("    };")
-    lines.append("}")
-    return "\n".join(lines)
+def render_aesthetic_scroll(state):
+    st.markdown(f"""
+    <div style="background-color: #fdf5e6; border: 15px double #8b5a2b; padding: 40px; font-family: 'serif'; text-align: center; color: #2a1a0f;">
+        <h1 style="color: #4a3423;">The Great Prophecy</h1>
+        <p><i>Scope: {state.game_size}</i></p><hr>
+        {"".join([f"<h3>{m}</h3><p>{', '.join(state.selected[m])}</p>" for m in MODULES if state.selected[m]])}
+    </div>
+    """, unsafe_allow_html=True)
 
 
-def export_outputs(state: EngineState, style: str) -> Path:
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-    if style == "Paragraph Form":
-        path = EXPORT_DIR / "game_pitch.md"
-        path.write_text(render_pitch(state), encoding="utf-8")
-        return path
-    if style == "IDE Style":
-        path = EXPORT_DIR / "ide_export.md"
-        path.write_text(render_ide_tree(state), encoding="utf-8")
-        return path
-
-    path = EXPORT_DIR / "GameDesignData.cs"
-    path.write_text(render_unity_script(state), encoding="utf-8")
-    return path
-
-
-def init_session_state(state: EngineState) -> None:
-    if "approved_dialogue" not in st.session_state:
-        st.session_state["approved_dialogue"] = list(state.selected.get("Narrative Script", []))
-
-
-def main() -> None:
-    st.set_page_config(page_title="Game Design Module Engine", layout="wide")
-    st.title("Game Design Module Engine")
-    st.caption("Master Design Flow: jump into stuck points, suggest ideas, checkmark what works, and export.")
-
+# --- MAIN APP ---
+def main():
+    st.set_page_config(page_title="Lore Weaver", layout="wide")
     state = EngineState.load()
-    init_session_state(state)
 
-    selected_size = st.selectbox("Game Size", GAME_SIZES, index=GAME_SIZES.index(state.game_size))
-    if selected_size != state.game_size:
-        state.game_size = selected_size
+    st.markdown("""
+        <style>
+        /* 1. External Asset Imports */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+        /* 2. Background Layering */
+        .stApp { 
+            background-image: url("https://www.transparenttextures.com/patterns/stardust.png"), 
+                              url("https://storage.needpix.com/rsynced_images/old-parchment.jpg"); 
+            background-size: auto, cover; 
+            background-attachment: fixed; 
+            color: #3e2f24; 
+        }
+
+        /* 3. Global Text & Headers */
+        h1 { 
+            color: #1f120c !important; 
+            text-align: center; 
+            font-size: 5rem !important; 
+            font-family: 'Cinzel', serif !important; 
+        }
+
+        /* Ensuring the Cinzel font carries to the rest of the UI */
+        .stMarkdown, p, label, .stSelectbox {
+            font-family: 'Cinzel', serif !important;
+            color: #3e2f24 !important;
+        }
+
+        /* 4. Depth Styling for Interactive Elements */
+        [data-testid="stCheckbox"] { 
+            background: rgba(255,255,255,0.15); 
+            border-radius: 8px; 
+            padding: 6px; 
+            margin: 6px 0; 
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.06); 
+        }
+
+        .stTextInput input, .stTextArea textarea { 
+            background-color: rgba(255,255,255,0.4) !important; 
+            border: 1px solid #c8a96b !important; 
+            backdrop-filter: blur(2px); 
+            border-radius: 10px; 
+        }
+
+        div.stButton > button { 
+            background-color: #2a1a0f !important; 
+            color: white !important; 
+            border: 1px solid #d4af37 !important; 
+            border-radius: 12px !important; 
+            font-weight: bold !important; 
+            transition: 0.3s; 
+        }
+
+        div.stButton > button:hover { 
+            border-color: #ffd700 !important; 
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.7); 
+            transform: translateY(-1px); 
+        }
+
+        div.stButton > button p { color: white !important; }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.title("Lore Weaver")
+
+    # 1. SCALE
+    new_size = st.selectbox("Current Game Scale", GAME_SIZES, index=GAME_SIZES.index(state.game_size))
+    if new_size != state.game_size:
+        state.game_size = new_size
         state.save()
+        st.rerun()
 
-    module_choice = st.radio("Module Menu (Stuck Points)", MODULES, horizontal=True)
-    suggestion_key = f"suggestions::{module_choice}::{state.game_size}"
-
-    st.subheader(module_choice)
-    if st.button(f"Suggest for {module_choice}"):
-        st.session_state[suggestion_key] = get_suggestions(module_choice, state.game_size)
-
-    suggestions = st.session_state.get(suggestion_key, get_suggestions(module_choice, state.game_size))
-
-    custom_entry = st.text_input(f"Add your own {module_choice} entry")
-    if st.button(f"Add Custom {module_choice} Entry") and custom_entry.strip():
-        current = state.selected.get(module_choice, [])
-        merged = list(dict.fromkeys(current + [custom_entry.strip()]))
-        state.selected[module_choice] = merged
-        state.save()
-        st.success("Custom entry saved.")
-
-    checked_values: List[str] = []
-    for idx, suggestion in enumerate(suggestions):
-        key = f"{module_choice}_{idx}_{state.game_size}"
-        default = suggestion in state.selected.get(module_choice, [])
-        if st.checkbox(suggestion, key=key, value=default):
-            checked_values.append(suggestion)
-
-    if st.button("Save Checkmarked Selections"):
-        existing_custom = [
-            item
-            for item in state.selected.get(module_choice, [])
-            if item not in get_suggestions(module_choice, state.game_size)
-        ]
-        state.selected[module_choice] = existing_custom + checked_values
-        state.save()
-        st.success(f"Saved {len(checked_values)} selections to {STATE_PATH}.")
-
-    if module_choice in {"Character Traits", "Setting"}:
-        st.markdown("### Visual Concept Generator")
-        entries = state.selected.get(module_choice, [])
-        if not entries:
-            st.info("Save at least one entry in this module to generate art prompts.")
-        for i, entry in enumerate(entries):
-            if st.button(f"Generate Art Prompt #{i + 1}", key=f"art_btn_{module_choice}_{i}"):
-                st.session_state[f"art_prompt_{module_choice}_{i}"] = build_art_prompt(entry, module_choice, state.game_size)
-
-            prompt = st.session_state.get(f"art_prompt_{module_choice}_{i}")
-            if prompt:
-                st.text_area(
-                    f"Copy to Clipboard Prompt #{i + 1}",
-                    value=prompt,
-                    height=120,
-                    key=f"art_prompt_box_{module_choice}_{i}",
-                    help="Use Ctrl/Cmd + C to copy.",
-                )
-
-    if module_choice == "Narrative Script":
-        st.markdown("### Smart Script: Live Dialogue Assistant")
-        seed = st.text_area(
-            "Enter a line ending in a quote / trailing pause (\" ... or :)",
-            key="dialogue_seed",
-            placeholder='John looked at the map and said...'
-        )
-
-        if st.button("Finish the Thought"):
-            if not can_finish_thought(seed):
-                st.warning("Please end your seed with a quote, ellipsis (...), or colon (:).")
-            else:
-                trait_context = state.selected.get("Character Traits", [])
-                st.session_state["dialogue_variations"] = build_dialogue_variations(seed, trait_context)
-
-        variations = st.session_state.get("dialogue_variations", [])
-        for idx, line in enumerate(variations):
-            st.write(f"**Variation {idx + 1}:** {line}")
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("Approve", key=f"approve_{idx}"):
-                    approved_dialogue = st.session_state.get("approved_dialogue", [])
-                    approved_dialogue.append(line)
-                    st.session_state["approved_dialogue"] = approved_dialogue
-                    updated_script = list(dict.fromkeys(state.selected.get("Narrative Script", []) + approved_dialogue))
-                    state.selected["Narrative Script"] = updated_script
-                    state.save()
-                    st.success("Line approved and added to your running script.")
-            with c2:
-                if st.button("Reject", key=f"reject_{idx}"):
-                    trait_context = state.selected.get("Character Traits", [])
-                    st.session_state["dialogue_variations"] = build_dialogue_variations(seed + " ", trait_context)
-                    st.info("Regenerated dialogue variations.")
-
-        st.markdown("#### Approved Dialogue (Session Script Builder)")
-        approved_lines = st.session_state.get("approved_dialogue", [])
-        if approved_lines:
-            script_text = "\n".join(f"- {line}" for line in approved_lines)
-            st.text_area(
-                "Build your script line-by-line",
-                value=script_text,
-                height=220,
-                disabled=True,
-            )
-            if st.button("Clear Approved Dialogue"):
-                st.session_state["approved_dialogue"] = []
-                st.success("Cleared approved dialogue for this session.")
-        else:
-            st.info("Approve dialogue lines to build your script here.")
-
+    module_choice = st.radio("Select Design Pillar", MODULES, horizontal=True)
     st.divider()
-    st.subheader("Export")
-    style = st.selectbox("Output Style", ["Paragraph Form", "IDE Style", "Unity Engine"])
-    if st.button("Export Design"):
-        export_path = export_outputs(state, style)
-        st.success(f"Exported to {export_path}")
+
+    # 2. SUGGESTION POOL (Logic for rolling 3 randoms from 20)
+    suggest_key = f"pool_{module_choice}_{state.game_size}"
+    if suggest_key not in st.session_state:
+        st.session_state[suggest_key] = random.sample(SUGGESTION_LIBRARY[module_choice][state.game_size], 3)
+
+    c1, c2 = st.columns([4, 1])
+    with c1:
+        st.subheader(f"Weaving: {module_choice}")
+    with c2:
+        if st.button("✨ Roll New Ideas"):
+            st.session_state[suggest_key] = random.sample(SUGGESTION_LIBRARY[module_choice][state.game_size], 3)
+            st.rerun()
+
+    # 3. DISPLAY & SELECTION
+    current_suggestions = st.session_state[suggest_key]
+    saved_items = state.selected.get(module_choice, [])
+    display_list = list(dict.fromkeys(saved_items + current_suggestions))
+
+    checked_values = []
+    for idx, item in enumerate(display_list):
+        is_checked = item in saved_items
+        label = f"✨ {item}" if item in current_suggestions and not is_checked else item
+        if st.checkbox(label, key=f"chk_{module_choice}_{idx}", value=is_checked):
+            checked_values.append(item)
+
+    if st.button("💾 Etch Selections into Codex"):
+        state.selected[module_choice] = checked_values
+        state.save()
+        st.success("Codex updated.")
+
+    # 4. CUSTOM ENTRY
+    custom = st.text_input(f"Add your own {module_choice} thought")
+    if st.button("Add Custom Entry") and custom:
+        state.selected[module_choice].append(custom)
+        state.save()
+        st.rerun()
+
+    # 5. VISUAL CONCEPT GENERATOR
+    if module_choice in {"Character Traits", "Setting", "Physical Traits"}:
+        st.markdown("---")
+        st.markdown("### 🎨 Visual Concept Generator")
+        for i, entry in enumerate(state.selected.get(module_choice, [])):
+            if st.button(f"Generate Art Prompt: {entry[:25]}...", key=f"art_{i}"):
+                st.info(build_art_prompt(entry, module_choice, state.game_size))
+
+    # 6. IMPROVED NARRATIVE LORE-LINKER
+    if module_choice == "Narrative Script":
+        st.markdown("---")
+        st.markdown("### 📜 Natural Lore-Linker")
+
+
+    # Mapping Traits to Categories
+        CATEGORIES = {
+            "Burden": ["Visible aging", "Burn scars", "Paper skin", "Stress-cracks", "Glass body"],
+            "Machine": ["Clockwork lungs", "AI virus hacker", "Techno-glitches", "Steam vents", "Rotating limb"],
+            "Ethereal": ["Dimensional bleed", "Static halo", "Ethereal anchor", "Void stomach", "Nebula aura"]
+        }
+
+    # Sensory Dictionary for Fillers
+        FILLERS = {
+            "Burden": {"desc": "the heavy weight of history", "dialogue": "this price I paid"},
+            "Machine": {"desc": "a rhythmic, metallic grinding", "dialogue": "a glitch in the system"},
+            "Ethereal": {"desc": "a cold, shimmering distortion", "dialogue": "the thinning of the veil"}
+        }
+        refs = state.selected.get("Character Traits", []) + state.selected.get("Physical Traits", [])
+
+
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            mood = st.select_slider("Intensity", ["Subtle", "Standard", "Dramatic"])
+            trait_ref = st.selectbox("Focus Trait:", refs) if refs else st.info("Add traits first.")
+        with col_b:
+            seed = st.text_area("Write your scene (Use '...' or '\"...\"' as triggers)",
+                                placeholder="Character looks in the mirror. She says, \"...\"")
+
+            if st.button("Weave Narrative") and seed:
+                    # 1. Determine Category
+                    cat = "Burden"  # Default
+                    for category, trait_list in CATEGORIES.items():
+                        if trait_ref in trait_list:
+                            cat = category
+
+                    # 2. Logic for Replacement
+                    # Replace Dialogue Signpost "..."
+                    processed = seed.replace('\"...\"', f'\"{FILLERS[cat]["dialogue"]}\"')
+                    # Replace Narrative Signpost ...
+                    processed = processed.replace('...', f'{FILLERS[cat]["desc"]}')
+
+                    st.session_state["narrative_options"] = [processed]
+
+
+
+        if "narrative_options" in st.session_state:
+            for opt in st.session_state["narrative_options"]:
+                st.write(f"> {opt}")
+                if st.button("Save this line", key=opt):
+                    state.selected["Narrative Script"].append(opt)
+                    state.save()
+
+    # 7. EXPORT (RESTORED UNITY + SCROLL)
+    st.divider()
+    ex_style = st.selectbox("Export Format", ["Plain Text", "Aesthetic Scroll", "Unity C# Script"])
+    if st.button("Generate Final Codex"):
+        if ex_style == "Plain Text":
+            st.text_area("Final Output", render_pitch(state), height=300)
+        elif ex_style == "Unity C# Script":
+            st.code(generate_unity_script(state), language="csharp")
+        else:
+            render_aesthetic_scroll(state)
 
 
 if __name__ == "__main__":
