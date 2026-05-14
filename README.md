@@ -12,6 +12,7 @@ A Python + Streamlit app that walks through a **Master Design Flow** for game co
     - Setting
     - Game Rules
     - Character Traits
+    - Physical Traits
     - Narrative Script
 - **Smart Suggest**
   - Each module has a **Suggest** button.
